@@ -1,6 +1,6 @@
 # vue-project
 
-This template should help get you started developing with Vue 2 in Vite.
+This template should help get you started developing with Vue 2/3 in Vite.
 
 ## Concepts that i covered in this app are as follows
 

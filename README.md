@@ -4,17 +4,17 @@ This template should help get you started developing with Vue 3 in Vite.
 
 ## Concepts that i covered in this app are as follows
 
-Data Binding single and 2-way
-Events and modifiers
-Keyboard Events
-dynamic css and conditionals
-looping
-multiple vue instances
-dynamic components,refs,nesting components
-props drilling (parent to child and child to parent)
-primitive and references types, bus emitter
-lifecycle methods,slots
-routes
+Data Binding single and 2-way,
+Events and modifiers,
+Keyboard Events,
+dynamic css and conditionals,
+looping,
+multiple vue instances,
+dynamic components,refs,nesting components,
+props drilling (parent to child and child to parent),
+primitive and references types, bus emitter,
+lifecycle methods,slots,
+routes.
 
 ## Recommended IDE Setup
 

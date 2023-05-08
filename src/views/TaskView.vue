@@ -97,6 +97,15 @@
           </td>
         </tr>
       </table>
+      <h1>Search History table</h1>
+      <ul>
+        <li v-for="(data, index) in history" :key="index">
+          <p :key="index">
+            {{ index + 1 }}) --- {{ data.toDate }} - {{ data.fromDate }} -
+            {{ data.query }} - {{ data.value }}
+          </p>
+        </li>
+      </ul>
     </div>
   </main>
 </template>
@@ -117,6 +126,7 @@ import moment from "moment";
 export default {
   data() {
     return {
+      history: [],
       fromDate: "",
       toDate: "",
       buttonFlag: true,
@@ -141,6 +151,9 @@ export default {
       this.toDate = "";
       this.fromDate = "";
       this.buttonFlag = true;
+      this.history = [];
+      this.selectedFilter1 = "All days";
+      this.selectedFilter2 = "the number of days";
     },
     checkFromDate(event) {
       if (event.target.value != "") {
@@ -152,11 +165,18 @@ export default {
     getDetails() {
       var x = new moment(this.toDate);
       var y = new moment(this.fromDate);
+      this.selectedFilter1 = "All days";
       this.countByDays = moment.duration(x.diff(y)).asDays();
       this.countByHours = moment.duration(x.diff(y)).asHours();
       this.countByMins = moment.duration(x.diff(y)).asMinutes();
       this.countBySeconds = moment.duration(x.diff(y)).asSeconds();
-      console.log("countByHours", moment.duration(x.diff(y)).asHours());
+      var obj3 = {
+        toDate: this.toDate,
+        fromDate: this.fromDate,
+        query: this.selectedFilter1,
+        value: this.countByDays,
+      };
+      this.history.push(obj3);
     },
     getOnChange(from, to) {
       this.countByDays = moment.duration(to.diff(from)).asDays();
@@ -165,49 +185,64 @@ export default {
       this.countBySeconds = moment.duration(to.diff(from)).asSeconds();
     },
     getByDays(days) {
-      console.log(days, "days");
       this.countByDays = days;
       this.countByHours = moment.duration(days) * 24;
       this.countByMins = moment.duration(days) * 24 * 60;
       this.countBySeconds = moment.duration(days) * 24 * 60 * 60;
+    },
+    dataStoreFilter1() {
+      var obj1 = {
+        toDate: this.toDate,
+        fromDate: this.fromDate,
+        query: this.selectedFilter1,
+        value: this.countByDays,
+      };
+      this.history.push(obj1);
+    },
+    dataStoreFilter2() {
+      var obj2 = {
+        toDate: this.toDate,
+        fromDate: this.fromDate,
+        query: this.selectedFilter2,
+        value: this.countByDays,
+      };
+      this.history.push(obj2);
     },
     onChangeFilter1() {
       this.selectedFilter2 = "the number of days";
       switch (this.selectedFilter1) {
         case "All days":
           this.getDetails();
+          this.dataStoreFilter1();
           break;
         case "Weekdays":
-          var startDate = moment(this.fromDate);
-          var endDate = moment(this.toDate);
-          var diffInDays = 0;
-          while (startDate <= endDate) {
-            if (
-              startDate.format("ddd") !== "Sat" &&
-              startDate.format("ddd") !== "Sun"
-            ) {
-              diffInDays++; //add 1 to your counter if its not a weekend day
+          var weekdays = [];
+          var count = 0;
+          var currentDate = moment(this.fromDate);
+          while (currentDate.isSameOrBefore(this.toDate)) {
+            if (currentDate.day() !== 0 && currentDate.day() !== 6) {
+              weekdays.push(currentDate.format("YYYY-MM-DD"));
+              count++;
             }
-            startDate = moment(startDate, "YYYY-MM-DD").add(1, "days"); //increment by one day
+            currentDate.add(1, "days");
           }
-          console.log(diffInDays - 1);
-          this.getByDays(diffInDays - 1);
+          this.getByDays(count - 1);
+          this.dataStoreFilter1();
           break;
         case "Weekends":
-          startDate = moment(this.fromDate);
-          endDate = moment(this.toDate);
-          diffInDays = 0;
-          while (startDate <= endDate) {
-            if (
-              startDate.format("ddd") !== "Sat" &&
-              startDate.format("ddd") !== "Sun"
-            ) {
-              diffInDays++; //add 1 to your counter if its not a weekend day
+          var weekends1 = [];
+          var currentDate1 = moment(this.fromDate);
+          var count1 = 0;
+
+          while (currentDate1.isSameOrBefore(this.toDate)) {
+            if (currentDate1.day() === 0 || currentDate1.day() === 6) {
+              weekends1.push(currentDate1.format("YYYY-MM-DD"));
+              count1++;
             }
-            startDate = moment(startDate, "YYYY-MM-DD").add(1, "days"); //increment by one day
+            currentDate1.add(1, "days");
           }
-          console.log(diffInDays - 4);
-          this.getByDays(diffInDays - 4);
+          this.getByDays(count1);
+          this.dataStoreFilter1();
           break;
       }
     },
@@ -215,15 +250,19 @@ export default {
       switch (this.selectedFilter2) {
         case "the number of days":
           this.selectedFilter2 = "the number of days";
+          this.dataStoreFilter2();
           break;
         case "the number of hours":
           this.selectedFilter2 = "the number of hours";
+          this.dataStoreFilter2();
           break;
         case "the number of mins":
           this.selectedFilter2 = "the number of mins";
+          this.dataStoreFilter2();
           break;
         case "the number of seconds":
           this.selectedFilter2 = "the number of seconds";
+          this.dataStoreFilter2();
           break;
       }
     },

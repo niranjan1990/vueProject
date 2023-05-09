@@ -18,9 +18,7 @@ import HelloWorld from "./components/HelloWorld.vue";
 
         <nav>
           <router-link to="/">Home</router-link>
-          <router-link to="/level1">Level 1 Vue</router-link>
-          <router-link to="/level2">Level 2 Vue</router-link>
-          <router-link to="/level3">Level 3 Vue</router-link>
+          <router-link to="/level3">Date app Task</router-link>
         </nav>
       </div>
     </header>

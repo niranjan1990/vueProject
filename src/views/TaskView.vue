@@ -1,54 +1,35 @@
-<!-- eslint-disable no-case-declarations -->
-<!-- eslint-disable no-case-declarations -->
 <template>
   <main>
     <h1>Date App</h1>
-    <div id="field1">
-      <label>Select FROM date</label>
-      <input
-        type="date"
-        v-model="fromDate"
-        id="fromDate"
-        v-on:click="checkFromDate"
-        @input="checkFromDate($event)"
+    <InputDate
+      :model="fromDate"
+      :method="checkEmpty"
+      :flag="false"
+      :checkDates="false"
+      :disabled="false"
+    />
+    <InputDate
+      :model="toDate"
+      :method="checkEmpty"
+      :flag="true"
+      :checkDates="checkDates"
+      :disabled="buttonFlag"
+    />
+    <div>
+      <FilterDay
+        :model="selectedFilterByDay"
+        :changeDay="onChangeByDay"
+        :dayOptions="filterByDay"
+        :selectedFilterByDay="selectedFilterByDay"
+        :disabled="emptyDates || checkDates"
       />
-    </div>
-    <div id="field2">
-      <label>Select TO date</label>
-      <input type="date" v-model="toDate" id="toDate" :disabled="buttonFlag" />
-      <p v-if="checkDates" class="danger">
-        Error!! don't select previous dates or same date
-      </p>
-    </div>
-    <div id="Filters">
-      <div>
-        Filters 1
-        <p>Get count by</p>
-        <select v-model="selectedFilter1" @change="onChangeFilter1($event)">
-          <option
-            v-for="(countBy, index) in filter1"
-            v-bind:value="countBy"
-            :selected="countBy == selectedFilter1 ? 'selected' : ''"
-            :key="index"
-          >
-            {{ countBy }}
-          </option>
-        </select>
-      </div>
-      <div>
-        Filters 2
-        <p>Get count of days by</p>
-        <select v-model="selectedFilter2" @change="onChangeFilter2($event)">
-          <option
-            v-for="(countBy, index) in filter2"
-            v-bind:value="countBy"
-            :selected="countBy == selectedFilter2 ? 'selected' : ''"
-            :key="index"
-          >
-            {{ countBy }}
-          </option>
-        </select>
-      </div>
+      <FilterTime
+        :model="selectedFilterByTime"
+        :changeTime="onChangeByTime"
+        :timeOptions="filterByTime"
+        :selectedFilterByTime="selectedFilterByTime"
+        :disabled="emptyDates || checkDates"
+      />
     </div>
     <div>
       <h2>view</h2>
@@ -56,15 +37,13 @@
       <button v-on:click="getDetails" :disabled="checkDates || emptyDates">
         submit
       </button>
-      <p>From Date: {{ fromDate }}</p>
-      <p>To Date: {{ toDate }}</p>
-      <p>Count on {{ selectedFilter2 }}</p>
+      <p>Results</p>
       <table class="tableBorder">
         <tr>
           <td>From Date</td>
           <td>To Date</td>
-          <td>Filter 1</td>
-          <td>Filter 2</td>
+          <td>Count by days</td>
+          <td>Count by time</td>
           <td>Days</td>
           <td>Hours</td>
           <td>Mins</td>
@@ -73,39 +52,31 @@
         <tr>
           <td>{{ fromDate }}</td>
           <td>{{ toDate }}</td>
-          <td>{{ selectedFilter1 }}</td>
-          <td>{{ selectedFilter2 }}</td>
+          <td>{{ selectedFilterByDay }}</td>
+          <td>{{ selectedFilterByTime }}</td>
           <td>
-            <p v-if="selectedFilter2 == 'the number of days'">
+            <p v-if="selectedFilterByTime == 'the number of days'">
               {{ countByDays }}
             </p>
           </td>
           <td>
-            <p v-if="selectedFilter2 == 'the number of hours'">
+            <p v-if="selectedFilterByTime == 'the number of hours'">
               {{ countByHours }}
             </p>
           </td>
           <td>
-            <p v-if="selectedFilter2 == 'the number of mins'">
+            <p v-if="selectedFilterByTime == 'the number of mins'">
               {{ countByMins }}
             </p>
           </td>
           <td>
-            <p v-if="selectedFilter2 == 'the number of seconds'">
+            <p v-if="selectedFilterByTime == 'the number of seconds'">
               {{ countBySeconds }}
             </p>
           </td>
         </tr>
       </table>
-      <h1>Search History table</h1>
-      <ul>
-        <li v-for="(data, index) in history" :key="index">
-          <p :key="index">
-            {{ index + 1 }}) --- {{ data.toDate }} - {{ data.fromDate }} -
-            {{ data.query }} - {{ data.value }}
-          </p>
-        </li>
-      </ul>
+      <HistoryTable :history="history" />
     </div>
   </main>
 </template>
@@ -122,8 +93,13 @@
 </style>
 <script>
 import moment from "moment";
+import InputDate from "@/components/InputDate.vue";
+import FilterDay from "@/components/FilterDay.vue";
+import FilterTime from "@/components/FilterTime.vue";
+import HistoryTable from "@/components/HistoryTable.vue";
 
 export default {
+  components: { InputDate, FilterDay, FilterTime, HistoryTable },
   data() {
     return {
       history: [],
@@ -131,14 +107,14 @@ export default {
       toDate: "",
       buttonFlag: true,
       toFlag: true,
-      selectedFilter1: "All days",
-      selectedFilter2: "the number of days",
+      selectedFilterByDay: "All days",
+      selectedFilterByTime: "the number of days",
       countByDays: "",
       countByHours: "",
       countByMins: "",
       countBySeconds: "",
-      filter1: ["All days", "Weekdays", "Weekends"],
-      filter2: [
+      filterByDay: ["All days", "Weekdays", "Weekends"],
+      filterByTime: [
         "the number of days",
         "the number of hours",
         "the number of mins",
@@ -147,127 +123,155 @@ export default {
     };
   },
   methods: {
+    /* reset the fields and clear history table */
     clear() {
       this.toDate = "";
       this.fromDate = "";
       this.buttonFlag = true;
       this.history = [];
-      this.selectedFilter1 = "All days";
-      this.selectedFilter2 = "the number of days";
+      this.selectedFilterByDay = "All days";
+      this.selectedFilterByTime = "the number of days";
     },
-    checkFromDate(event) {
+    /* set and check empty fields */
+    checkEmpty(event, flag) {
+      if (flag == true) {
+        this.toDate = event.target.value;
+      } else {
+        this.fromDate = event.target.value;
+      }
       if (event.target.value != "") {
         return (this.buttonFlag = false);
       } else {
         return (this.buttonFlag = true);
       }
     },
+    /* get all details from selected range */
     getDetails() {
-      var x = new moment(this.toDate);
-      var y = new moment(this.fromDate);
-      this.selectedFilter1 = "All days";
-      this.countByDays = moment.duration(x.diff(y)).asDays();
-      this.countByHours = moment.duration(x.diff(y)).asHours();
-      this.countByMins = moment.duration(x.diff(y)).asMinutes();
-      this.countBySeconds = moment.duration(x.diff(y)).asSeconds();
-      var obj3 = {
-        toDate: this.toDate,
+      this.selectedFilterByDay = "All days";
+      this.selectedFilterByTime = "the number of days";
+      let to = new moment(this.toDate);
+      let from = new moment(this.fromDate);
+      let duration = moment.duration(to.diff(from));
+      this.countByDays = duration.asDays();
+      this.countByHours = duration.asHours();
+      this.countByMins = duration.asMinutes();
+      this.countBySeconds = duration.asSeconds();
+      let tableData = {
         fromDate: this.fromDate,
-        query: this.selectedFilter1,
+        toDate: this.toDate,
+        filterByDay: this.selectedFilterByDay,
+        filterByTime: this.selectedFilterByTime,
         value: this.countByDays,
       };
-      this.history.push(obj3);
+      this.history.push(tableData);
     },
-    getOnChange(from, to) {
-      this.countByDays = moment.duration(to.diff(from)).asDays();
-      this.countByHours = moment.duration(to.diff(from)).asHours();
-      this.countByMins = moment.duration(to.diff(from)).asMinutes();
-      this.countBySeconds = moment.duration(to.diff(from)).asSeconds();
-    },
+    /* get all details by days */
     getByDays(days) {
       this.countByDays = days;
-      this.countByHours = moment.duration(days) * 24;
-      this.countByMins = moment.duration(days) * 24 * 60;
-      this.countBySeconds = moment.duration(days) * 24 * 60 * 60;
+      let dayDuration = moment.duration(days);
+      this.countByHours = dayDuration * 24;
+      this.countByMins = dayDuration * 24 * 60;
+      this.countBySeconds = dayDuration * 24 * 60 * 60;
     },
-    dataStoreFilter1() {
-      var obj1 = {
-        toDate: this.toDate,
+    /* store data to history array by days */
+    dataStoreByDay() {
+      let dataByDay = {
         fromDate: this.fromDate,
-        query: this.selectedFilter1,
+        toDate: this.toDate,
+        filterByDay: this.selectedFilterByDay,
+        filterByTime: this.selectedFilterByTime,
         value: this.countByDays,
       };
-      this.history.push(obj1);
+      this.history.push(dataByDay);
     },
-    dataStoreFilter2() {
-      var obj2 = {
-        toDate: this.toDate,
+    /* store data to history array by time */
+    dataStoreByTime() {
+      let time;
+      switch (this.selectedFilterByTime) {
+        case "the number of days":
+          time = this.countByDays;
+          break;
+        case "the number of hours":
+          time = this.countByHours;
+          break;
+        case "the number of mins":
+          time = this.countByMins;
+          break;
+        case "the number of seconds":
+          time = this.countBySeconds;
+          break;
+      }
+      let dataByTime = {
         fromDate: this.fromDate,
-        query: this.selectedFilter2,
-        value: this.countByDays,
+        toDate: this.toDate,
+        filterByDay: this.selectedFilterByDay,
+        filterByTime: this.selectedFilterByTime,
+        value: time,
       };
-      this.history.push(obj2);
+      this.history.push(dataByTime);
     },
-    onChangeFilter1() {
-      this.selectedFilter2 = "the number of days";
-      switch (this.selectedFilter1) {
+    /* onChange function for filtering by days which is first filter */
+    onChangeByDay(event) {
+      this.selectedFilterByTime = "the number of days";
+      this.selectedFilterByDay = event.target.value;
+      let currentDate = moment(this.fromDate);
+      switch (this.selectedFilterByDay) {
         case "All days":
           this.getDetails();
-          this.dataStoreFilter1();
+          this.dataStoreByDay();
           break;
-        case "Weekdays":
-          var weekdays = [];
-          var count = 0;
-          var currentDate = moment(this.fromDate);
+        case "Weekdays": {
+          let weekdays = [];
+          let wd = 0;
           while (currentDate.isSameOrBefore(this.toDate)) {
             if (currentDate.day() !== 0 && currentDate.day() !== 6) {
               weekdays.push(currentDate.format("YYYY-MM-DD"));
-              count++;
+              wd++;
             }
             currentDate.add(1, "days");
           }
-          this.getByDays(count - 1);
-          this.dataStoreFilter1();
+          this.getByDays(wd - 1);
+          this.dataStoreByDay();
           break;
-        case "Weekends":
-          var weekends1 = [];
-          var currentDate1 = moment(this.fromDate);
-          var count1 = 0;
+        }
+        case "Weekends": {
+          let weekends = [];
+          let we = 0;
 
-          while (currentDate1.isSameOrBefore(this.toDate)) {
-            if (currentDate1.day() === 0 || currentDate1.day() === 6) {
-              weekends1.push(currentDate1.format("YYYY-MM-DD"));
-              count1++;
+          while (currentDate.isSameOrBefore(this.toDate)) {
+            if (currentDate.day() === 0 || currentDate.day() === 6) {
+              weekends.push(currentDate.format("YYYY-MM-DD"));
+              we++;
             }
-            currentDate1.add(1, "days");
+            currentDate.add(1, "days");
           }
-          this.getByDays(count1);
-          this.dataStoreFilter1();
+          this.getByDays(we);
+          this.dataStoreByDay();
           break;
+        }
       }
     },
-    onChangeFilter2() {
-      switch (this.selectedFilter2) {
+    /* onChange function for filtering by time which is second filter */
+    onChangeByTime(event) {
+      this.selectedFilterByTime = event.target.value;
+      switch (this.selectedFilterByTime) {
         case "the number of days":
-          this.selectedFilter2 = "the number of days";
-          this.dataStoreFilter2();
+          this.dataStoreByTime();
           break;
         case "the number of hours":
-          this.selectedFilter2 = "the number of hours";
-          this.dataStoreFilter2();
+          this.dataStoreByTime();
           break;
         case "the number of mins":
-          this.selectedFilter2 = "the number of mins";
-          this.dataStoreFilter2();
+          this.dataStoreByTime();
           break;
         case "the number of seconds":
-          this.selectedFilter2 = "the number of seconds";
-          this.dataStoreFilter2();
+          this.dataStoreByTime();
           break;
       }
     },
   },
   computed: {
+    /* validation to check the past dates */
     checkDates() {
       if (moment(this.fromDate).diff(moment(this.toDate), "days") >= 0) {
         return true;
@@ -275,6 +279,7 @@ export default {
         return false;
       }
     },
+    /* validation to check the dates are not empty for submit button */
     emptyDates() {
       return this.fromDate == "" || this.toDate == "" ? true : false;
     },
